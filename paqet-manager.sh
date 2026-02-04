@@ -2,7 +2,7 @@
 
 #=================================================
 # Paqet Tunnel Manager
-# Version: 3.0
+# Version: 3.1
 # Raw packet-level tunneling for bypassing network restrictions
 # GitHub: https://github.com/hanselime/paqet
 # Design and development by: https://github.com/behzadea12 - https://t.me/behzad_developer
@@ -19,7 +19,7 @@ WHITE='\033[1;37m'
 NC='\033[0m'
 
 # Configuration
-SCRIPT_VERSION="3.0"
+SCRIPT_VERSION="3.1"
 PAQET_VERSION="v1.0.0-alpha.12"
 CONFIG_DIR="/etc/paqet"
 SERVICE_DIR="/etc/systemd/system"
@@ -42,7 +42,7 @@ show_banner() {
     echo "║     ╚═╝     ╚═╝  ╚═╝ ╚══▀▀═╝ ╚══════╝   ╚═╝                  ║"
     echo "║                                                              ║"
     echo "║          Raw Packet Tunnel - Firewall Bypass                 ║"
-    echo "║                                 Manager v3.0                 ║"
+    echo "║                                 Manager v3.1                 ║"
     echo "║                                                              ║"
     echo "║          https://t.me/behzad_developer                       ║"
     echo "║          https://github.com/behzadea12                       ║"    
@@ -374,11 +374,178 @@ EOF
     print_success "Service created: ${service_name}"
 }
 
-# Configure as Server (Abroad)
+# Select KCP mode
+select_kcp_mode() {
+    local mode=""
+    while true; do
+        echo ""
+        read -p "Select [1-2]: " kcp_choice
+        
+        case $kcp_choice in
+            1)
+                mode="fast"
+                break
+                ;;
+            2)
+                mode="manual"
+                break
+                ;;
+            *)
+                print_error "Invalid selection"
+                continue
+                ;;
+        esac
+    done
+    echo "$mode"
+}
+
+# Get manual KCP settings
+get_manual_kcp_settings() {
+    echo ""
+    echo -e "${YELLOW}Manual KCP Configuration${NC}"
+    echo -e "${CYAN}Press Enter to use default values${NC}"
+    echo ""
+    
+    local manual_settings=""
+    
+    read -p "Nodelay [1]: " nodelay
+    nodelay="${nodelay:-1}"
+    manual_settings+="nodelay:$nodelay "
+    
+    read -p "Wdelay [false]: " wdelay
+    wdelay="${wdelay:-false}"
+    manual_settings+="wdelay:$wdelay "
+    
+    read -p "Acknodelay [true]: " acknodelay
+    acknodelay="${acknodelay:-true}"
+    manual_settings+="acknodelay:$acknodelay "
+    
+    read -p "Interval [20]: " interval
+    interval="${interval:-20}"
+    manual_settings+="interval:$interval "
+    
+    read -p "Resend [1]: " resend
+    resend="${resend:-1}"
+    manual_settings+="resend:$resend "
+    
+    read -p "Nocongestion [1]: " nocongestion
+    nocongestion="${nocongestion:-1}"
+    manual_settings+="nocongestion:$nocongestion "
+    
+    read -p "MTU [1200]: " mtu
+    mtu="${mtu:-1200}"
+    manual_settings+="mtu:$mtu "
+    
+    read -p "Receive Window [2048]: " rcvwnd
+    rcvwnd="${rcvwnd:-2048}"
+    manual_settings+="rcvwnd:$rcvwnd "
+    
+    read -p "Send Window [2048]: " sndwnd
+    sndwnd="${sndwnd:-2048}"
+    manual_settings+="sndwnd:$sndwnd "
+    
+    echo ""
+    echo -e "${YELLOW}Select encryption method:${NC}"
+    echo -e "  1. aes-128-gcm (Recommended)"
+    echo -e "  2. aes"
+    echo -e "  3. tea"
+    echo -e "  4. xtea"
+    echo -e "  5. none (No encryption)"
+    read -p "Choice [1]: " enc_choice
+    
+    case $enc_choice in
+        1) block="aes-128-gcm" ;;
+        2) block="aes" ;;
+        3) block="tea" ;;
+        4) block="xtea" ;;
+        5) block="none" ;;
+        *) block="aes-128-gcm" ;;
+    esac
+    manual_settings+="block:$block"
+    
+    echo "$manual_settings"
+}
+
+# Get KCP configuration based on mode
+get_kcp_config() {
+    local mode="$1"
+    local secret_key="$2"
+    local manual_settings="$3"
+    
+    case $mode in
+        fast)
+            cat << EOF
+  kcp:
+    mode: "fast"
+    key: "${secret_key}"
+EOF
+            ;;
+        manual)
+            # Parse manual settings
+            local nodelay=1
+            local wdelay="false"
+            local acknodelay="true"
+            local interval=20
+            local resend=1
+            local nocongestion=1
+            local mtu=1200
+            local rcvwnd=2048
+            local sndwnd=2048
+            local block="aes-128-gcm"
+            
+            # Extract values from manual_settings string
+            if [ -n "$manual_settings" ]; then
+                # Split by space and process each key:value pair
+                IFS=' ' read -ra settings <<< "$manual_settings"
+                for setting in "${settings[@]}"; do
+                    IFS=':' read -r key value <<< "$setting"
+                    case $key in
+                        nodelay) nodelay="$value" ;;
+                        wdelay) wdelay="$value" ;;
+                        acknodelay) acknodelay="$value" ;;
+                        interval) interval="$value" ;;
+                        resend) resend="$value" ;;
+                        nocongestion) nocongestion="$value" ;;
+                        mtu) mtu="$value" ;;
+                        rcvwnd) rcvwnd="$value" ;;
+                        sndwnd) sndwnd="$value" ;;
+                        block) block="$value" ;;
+                    esac
+                done
+            fi
+            
+            cat << EOF
+  kcp:
+    mode: "manual"
+    nodelay: ${nodelay}
+    wdelay: ${wdelay}
+    acknodelay: ${acknodelay}
+    interval: ${interval}
+    resend: ${resend}
+    nocongestion: ${nocongestion}
+    mtu: ${mtu}
+    rcvwnd: ${rcvwnd}
+    sndwnd: ${sndwnd}
+    block: "${block}"
+    key: "${secret_key}"
+EOF
+            ;;
+        *)
+            # Default to fast mode
+            cat << EOF
+  kcp:
+    mode: "fast"
+    key: "${secret_key}"
+EOF
+            ;;
+    esac
+}
+
+# Configure as Server (kharej)
 configure_server() {
     while true; do
         show_banner
-        echo -e "${GREEN}Configure as Server (Abroad)${NC}"
+        echo -e "${GREEN}Configure as Server (kharej)${NC}"
         echo ""
         
         # Get network info
@@ -400,7 +567,6 @@ configure_server() {
         if [ -z "$config_name" ]; then
             config_name="default"
         fi
-        print_info "Sanitized config name: $config_name"
         
         # Check existing config
         if [ -f "$CONFIG_DIR/${config_name}.yaml" ]; then
@@ -432,6 +598,21 @@ configure_server() {
             continue
         fi
         
+        # Select KCP mode
+        echo ""
+        echo -e "${YELLOW}Select KCP Mode:${NC}"
+        echo -e "  ${CYAN}1)${NC} Fast Mode (Recommended for most users)"
+        echo -e "  ${CYAN}2)${NC} Manual Mode (Advanced configuration)"
+        echo ""
+        local kcp_mode
+        kcp_mode=$(select_kcp_mode)
+        
+        local manual_settings=""
+        # اگر حالت manual انتخاب شد، تنظیمات را دریافت کن
+        if [ "$kcp_mode" = "manual" ]; then
+            manual_settings=$(get_manual_kcp_settings)
+        fi
+        
         # Get secret key
         echo ""
         local secret_key
@@ -448,7 +629,11 @@ configure_server() {
             continue
         fi
         
-        # Get V2Ray ports
+        # Get KCP configuration based on mode
+        local kcp_config
+        kcp_config=$(get_kcp_config "$kcp_mode" "$secret_key" "$manual_settings")
+        
+        # Get V2Ray ports (for information only)
         echo ""
         read -p "V2Ray inbound ports (comma separated) [9090]: " inbound_ports
         inbound_ports="${inbound_ports:-9090}"
@@ -468,26 +653,27 @@ configure_server() {
         # Create config
         mkdir -p "$CONFIG_DIR"
         cat > "$CONFIG_DIR/${config_name}.yaml" << EOF
-# Paqet Server Configuration
+# paqet Server Configuration
 role: "server"
 
 log:
   level: "info"
 
 listen:
-  addr: ":$port"
+  addr: ":${port}"
 
 network:
-  interface: "$interface"
+  interface: "${interface}"
   ipv4:
-    addr: "$local_ip:$port"
-    router_mac: "$gateway_mac"
+    addr: "${local_ip}:${port}"
+    router_mac: "${gateway_mac}"
+  tcp:
+    local_flag: ["PA"]
 
 transport:
   protocol: "kcp"
-  kcp:
-    block: "aes"
-    key: "$secret_key"
+  conn: 1
+$(echo "$kcp_config")
 EOF
         
         print_success "Configuration saved: $CONFIG_DIR/${config_name}.yaml"
@@ -507,9 +693,14 @@ EOF
             echo -e "  ${YELLOW}Public IP:${NC}    ${CYAN}$public_ip${NC}"
             echo -e "  ${YELLOW}Listen Port:${NC}  ${CYAN}$port${NC}"
             echo -e "  ${YELLOW}V2Ray Ports:${NC}  ${CYAN}$inbound_ports${NC}"
+            echo -e "  ${YELLOW}KCP Mode:${NC}     ${CYAN}$kcp_mode${NC}"
             echo ""
             echo -e "${YELLOW}Secret Key (save for client):${NC}"
             echo -e "${CYAN}$secret_key${NC}"
+            echo ""
+            if [ "$kcp_mode" = "manual" ]; then
+                echo -e "${YELLOW}Note:${NC} Share these KCP settings with client for manual mode"
+            fi
             echo ""
         else
             print_error "Failed to start service"
@@ -541,7 +732,7 @@ configure_client() {
         echo ""
         
         # Get server details
-        read -p "Server IP (abroad): " server_ip
+        read -p "Server IP (kharej): " server_ip
         if [ -z "$server_ip" ]; then
             print_error "Server IP is required"
             continue
@@ -556,10 +747,30 @@ configure_client() {
             continue
         fi
         
+        # Select KCP mode
+        echo ""
+        echo -e "${YELLOW}Select KCP Mode:${NC}"
+        echo -e "  ${CYAN}1)${NC} Fast Mode (Recommended for most users)"
+        echo -e "  ${CYAN}2)${NC} Manual Mode (Advanced configuration)"
+        echo -e "${CYAN}Make sure this matches the server configuration!${NC}"
+        echo ""
+        local kcp_mode
+        kcp_mode=$(select_kcp_mode)
+        
+        local manual_settings=""
+        # اگر حالت manual انتخاب شد، تنظیمات را دریافت کن
+        if [ "$kcp_mode" = "manual" ]; then
+            manual_settings=$(get_manual_kcp_settings)
+        fi
+        
         # Get config name
         read -p "Config name [client]: " config_name
         config_name="${config_name:-client}"
-        
+        config_name=$(echo "$config_name" | tr -cd '[:alnum:]-_')
+        if [ -z "$config_name" ]; then
+            config_name="default"
+        fi
+
         # Check existing config
         if [ -f "$CONFIG_DIR/${config_name}.yaml" ]; then
             read -p "Config exists. Overwrite? (y/N): " overwrite
@@ -617,31 +828,38 @@ configure_client() {
             configure_iptables "$port"
         done
         
+        # Get KCP configuration based on mode
+        local kcp_config
+        kcp_config=$(get_kcp_config "$kcp_mode" "$secret_key" "$manual_settings")
+        
         # Create config
         mkdir -p "$CONFIG_DIR"
         cat > "$CONFIG_DIR/${config_name}.yaml" << EOF
-# Paqet Client Configuration
+# paqet Client Configuration
 role: "client"
 
 log:
   level: "info"
 
+# Port forwarding
 forward:${forward_config}
 
 network:
-  interface: "$interface"
+  interface: "${interface}"
   ipv4:
-    addr: "$local_ip:0"
-    router_mac: "$gateway_mac"
+    addr: "${local_ip}:0"
+    router_mac: "${gateway_mac}"
+  tcp:
+    local_flag: ["PA"]
+    remote_flag: ["PA"]
 
 server:
-  addr: "$server_ip:$server_port"
+  addr: "${server_ip}:${server_port}"
 
 transport:
   protocol: "kcp"
-  kcp:
-    block: "aes"
-    key: "$secret_key"
+  conn: 1
+$(echo "$kcp_config")
 EOF
         
         print_success "Configuration saved: $CONFIG_DIR/${config_name}.yaml"
@@ -661,10 +879,11 @@ EOF
             echo -e "  ${YELLOW}This Server:${NC}   ${CYAN}$public_ip${NC}"
             echo -e "  ${YELLOW}Server:${NC}        ${CYAN}$server_ip:$server_port${NC}"
             echo -e "  ${YELLOW}Forward Ports:${NC} ${CYAN}$forward_ports${NC}"
+            echo -e "  ${YELLOW}KCP Mode:${NC}      ${CYAN}$kcp_mode${NC}"
             echo ""
-            echo -e "${YELLOW}Client Connection:${NC}"
-            echo -e "  Connect to: ${CYAN}$public_ip${NC}"
-            echo -e "  Ports:      ${CYAN}$forward_ports${NC}"
+            if [ "$kcp_mode" = "manual" ]; then
+                echo -e "${YELLOW}Note:${NC} Manual mode settings applied as configured"
+            fi
             echo ""
         else
             print_error "Failed to start service"
@@ -690,7 +909,7 @@ list_services() {
         print_info "No Paqet services found"
     else
         echo -e "${CYAN}┌──────────────────────────────────────────────────────────────┐${NC}"
-        echo -e "${CYAN}│ Service Name          │     Status     │   Type    │${NC}"
+        echo -e "${CYAN}│ Service Name          │     Status     │   Type    │ KCP Mode │${NC}"
         echo -e "${CYAN}├──────────────────────────────────────────────────────────────┤${NC}"
         
         for service in "${services[@]}"; do
@@ -699,9 +918,11 @@ list_services() {
             
             local status=$(systemctl is-active "$service" 2>/dev/null || echo "unknown")
             local type="unknown"
+            local kcp_mode="unknown"
             local config_file="$CONFIG_DIR/$display_name.yaml"
             if [ -f "$config_file" ]; then
                 type=$(grep "^role:" "$config_file" 2>/dev/null | awk '{print $2}' | tr -d '"' || echo "unknown")
+                kcp_mode=$(grep "mode:" "$config_file" 2>/dev/null | head -1 | awk '{print $2}' | tr -d '"' || echo "fast")
             fi
             
             local status_text="$status"
@@ -714,8 +935,8 @@ list_services() {
                 *)        status_color="${WHITE}"; status_text="$status" ;;
             esac
 
-            printf "${CYAN}│ ${WHITE}%-21s ${CYAN}│ ${status_color}%-12s${NC} ${CYAN}│ ${WHITE}%-9s ${CYAN}│${NC}\n" \
-                   "$display_name" "$status_text" "$type"
+            printf "${CYAN}│ ${WHITE}%-21s ${CYAN}│ ${status_color}%-12s${NC} ${CYAN}│ ${WHITE}%-9s ${CYAN}│ ${WHITE}%-8s ${CYAN}│${NC}\n" \
+                   "$display_name" "$status_text" "$type" "$kcp_mode"
         done
         
         echo -e "${CYAN}└──────────────────────────────────────────────────────────────┘${NC}"
