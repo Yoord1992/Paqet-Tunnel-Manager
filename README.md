@@ -18,3 +18,5 @@ go version
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/behzadea12/Paqet-Tunnel-Manager/main/paqet-manager.sh)
 ```
+First option 1
+Then config(2-3)
