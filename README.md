@@ -20,3 +20,39 @@ bash <(curl -fsSL https://raw.githubusercontent.com/behzadea12/Paqet-Tunnel-Mana
 ```
 First option 1
 Then config(2-3)
+
+
+## Troubleshooting: Paqet Installation Issues
+
+If Paqet fails to install automatically during configuration  
+(i.e. you see "Failed to install Paqet" or the script gets stuck when adding a new config in **Server/Kharej** or **Client/Iran** mode), follow these simple steps:
+
+1. **Manually download the Paqet binary**  
+
+   Visit the official releases page:  
+   https://github.com/hanselime/paqet/releases
+
+   - Choose the **latest release** (currently `v1.0.0-alpha.13` or newer — always pick the most recent one).  
+   - Download the file that matches your server architecture:
+
+     - `paqet-linux-amd64-*.tar.gz` → for most 64-bit servers (x86_64 / amd64)  
+     - `paqet-linux-arm64-*.tar.gz` → for ARM-based servers (aarch64 / arm64)
+
+2. **Place the downloaded file in this exact folder**  
+
+   Move or copy the `.tar.gz` file to:
+
+   ```bash
+   /root/paqet/
+   ```
+If the folder doesn't exist, create it first:
+   ```bash
+    mkdir -p /root/paqet
+  ```
+Example (assuming you downloaded the file to your Downloads folder):
+  ```bash
+  mv ~/Downloads/paqet-linux-amd64-v*.tar.gz /root/paqet/
+  ```
+
+3. Run the manager script again
+   The script will automatically detect the file inside /root/paqet/, use it instead of trying to download again, extract it, and complete the installation.
