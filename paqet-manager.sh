@@ -19,7 +19,7 @@ WHITE='\033[1;37m'
 NC='\033[0m'
 
 # Configuration
-SCRIPT_VERSION="3.5"
+SCRIPT_VERSION="3.6"
 PAQET_VERSION="v1.0.0-alpha.12"
 CONFIG_DIR="/etc/paqet"
 SERVICE_DIR="/etc/systemd/system"
@@ -42,7 +42,7 @@ show_banner() {
     echo "║     ╚═╝     ╚═╝  ╚═╝ ╚══▀▀═╝ ╚══════╝   ╚═╝                  ║"
     echo "║                                                              ║"
     echo "║          Raw Packet Tunnel - Firewall Bypass                 ║"
-    echo "║                                 Manager v3.5                 ║"
+    echo "║                                 Manager v3.6                 ║"
     echo "║                                                              ║"
     echo "║          https://t.me/behzad_developer                       ║"
     echo "║          https://github.com/behzadea12                       ║"    
