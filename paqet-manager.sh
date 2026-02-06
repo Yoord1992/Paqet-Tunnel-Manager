@@ -2,7 +2,7 @@
 
 #=================================================
 # Paqet Tunnel Manager
-# Version: 3.6
+# Version: 3.7
 # Raw packet-level tunneling for bypassing network restrictions
 # GitHub: https://github.com/hanselime/paqet
 # Design and development by: https://github.com/behzadea12 - https://t.me/behzad_developer
@@ -19,7 +19,7 @@ WHITE='\033[1;37m'
 NC='\033[0m'
 
 # Configuration
-SCRIPT_VERSION="3.6"
+SCRIPT_VERSION="3.7"
 PAQET_VERSION="v1.0.0-alpha.12"
 CONFIG_DIR="/etc/paqet"
 SERVICE_DIR="/etc/systemd/system"
@@ -42,7 +42,7 @@ show_banner() {
     echo "║     ╚═╝     ╚═╝  ╚═╝ ╚══▀▀═╝ ╚══════╝   ╚═╝                  ║"
     echo "║                                                              ║"
     echo "║          Raw Packet Tunnel - Firewall Bypass                 ║"
-    echo "║                                 Manager v3.6                 ║"
+    echo "║                                 Manager v3.7                 ║"
     echo "║                                                              ║"
     echo "║          https://t.me/behzad_developer                       ║"
     echo "║          https://github.com/behzadea12                       ║"    
@@ -209,17 +209,17 @@ install_dependencies() {
     case $os in
         ubuntu|debian)
             apt update -qq >/dev/null 2>&1 || true
-            apt install -y curl wget libpcap-dev iptables lsof iproute2 >/dev/null 2>&1 || {
+            apt install -y curl wget libpcap-dev iptables lsof iproute2 cron >/dev/null 2>&1 || {
                 print_warning "Some packages may have failed to install"
             }
             ;;
         centos|rhel|fedora|rocky|almalinux)
-            yum install -y curl wget libpcap-devel iptables lsof iproute >/dev/null 2>&1 || {
+            yum install -y curl wget libpcap-devel iptables lsof iproute cronie >/dev/null 2>&1 || {
                 print_warning "Some packages may have failed to install"
             }
             ;;
         *)
-            print_warning "Unknown OS. Please install manually: libpcap iptables curl"
+            print_warning "Unknown OS. Please install manually: libpcap iptables curl cron"
             ;;
     esac
     
@@ -655,6 +655,161 @@ get_kcp_mode_config() {
     echo "$mode_config"
 }
 
+# Add automatic restart cronjob for service
+add_auto_restart_cronjob() {
+    local service_name="$1"
+    local cron_interval="$2"
+    
+    local cron_command="systemctl restart ${service_name}"
+    local cron_line=""
+    
+    case $cron_interval in
+        "1min")
+            cron_line="*/1 * * * * $cron_command"
+            ;;
+        "5min")
+            cron_line="*/5 * * * * $cron_command"
+            ;;
+        "15min")
+            cron_line="*/15 * * * * $cron_command"
+            ;;
+        "30min")
+            cron_line="*/30 * * * * $cron_command"
+            ;;
+        "1hour")
+            cron_line="0 */1 * * * $cron_command"
+            ;;
+        "12hour")
+            cron_line="0 */12 * * * $cron_command"
+            ;;
+        "1day")
+            cron_line="0 0 * * * $cron_command"
+            ;;
+        *)
+            print_error "Invalid cron interval"
+            return 1
+            ;;
+    esac
+    
+    # Check if cronjob already exists
+    if crontab -l 2>/dev/null | grep -q "$cron_command"; then
+        # Remove existing cronjob
+        crontab -l 2>/dev/null | grep -v "$cron_command" | crontab -
+    fi
+    
+    # Add new cronjob
+    (crontab -l 2>/dev/null; echo "$cron_line") | crontab -
+    
+    if [ $? -eq 0 ]; then
+        print_success "Cronjob added: $cron_interval restart for $service_name"
+        return 0
+    else
+        print_error "Failed to add cronjob"
+        return 1
+    fi
+}
+
+# Remove cronjob for service
+remove_cronjob() {
+    local service_name="$1"
+    local cron_command="systemctl restart ${service_name}"
+    
+    if crontab -l 2>/dev/null | grep -q "$cron_command"; then
+        crontab -l 2>/dev/null | grep -v "$cron_command" | crontab -
+        print_success "Cronjob removed for $service_name"
+        return 0
+    else
+        print_info "No cronjob found for $service_name"
+        return 1
+    fi
+}
+
+# View cronjob for service
+view_cronjob() {
+    local service_name="$1"
+    local cron_command="systemctl restart ${service_name}"
+    
+    echo -e "${YELLOW}Cronjobs for $service_name:${NC}"
+    echo ""
+    
+    if crontab -l 2>/dev/null | grep -q "$cron_command"; then
+        crontab -l 2>/dev/null | grep "$cron_command"
+    else
+        print_info "No cronjob found for $service_name"
+    fi
+}
+
+# Cronjob menu for service
+manage_cronjob() {
+    local service_name="$1"
+    local display_name="$2"
+    
+    while true; do
+        show_banner
+        echo -e "${YELLOW}Manage Cronjob for: $display_name${NC}"
+        echo ""
+        
+        echo -e "${CYAN}Current cronjob:${NC}"
+        view_cronjob "$service_name"
+        echo ""
+        
+        echo -e "${CYAN}Add/Change Cronjob:${NC}"
+        echo -e "  1. 1 minute"
+        echo -e "  2. 5 minutes"
+        echo -e "  3. 15 minutes"
+        echo -e "  4. 30 minutes"
+        echo -e "  5. 1 hour"
+        echo -e "  6. 12 hours"
+        echo -e "  7. 1 day"
+        echo -e "  8. Remove cronjob"
+        echo -e "  9. Back to service menu"
+        echo ""
+        
+        read -p "Choose option [1-9]: " cron_choice
+        
+        case $cron_choice in
+            1)
+                add_auto_restart_cronjob "$service_name" "1min"
+                read -p "Press Enter to continue..."
+                ;;
+            2)
+                add_auto_restart_cronjob "$service_name" "5min"
+                read -p "Press Enter to continue..."
+                ;;
+            3)
+                add_auto_restart_cronjob "$service_name" "15min"
+                read -p "Press Enter to continue..."
+                ;;
+            4)
+                add_auto_restart_cronjob "$service_name" "30min"
+                read -p "Press Enter to continue..."
+                ;;
+            5)
+                add_auto_restart_cronjob "$service_name" "1hour"
+                read -p "Press Enter to continue..."
+                ;;
+            6)
+                add_auto_restart_cronjob "$service_name" "12hour"
+                read -p "Press Enter to continue..."
+                ;;
+            7)
+                add_auto_restart_cronjob "$service_name" "1day"
+                read -p "Press Enter to continue..."
+                ;;
+            8)
+                remove_cronjob "$service_name"
+                read -p "Press Enter to continue..."
+                ;;
+            9)
+                return
+                ;;
+            *)
+                print_error "Invalid choice"
+                ;;
+        esac
+    done
+}
+
 # Configure as Server (Abroad)
 configure_server() {
     while true; do
@@ -782,10 +937,16 @@ EOF
         
         # Create and start service
         create_systemd_service "$config_name"
-        systemctl enable "paqet-${config_name}" --now
+        local service_name="paqet-${config_name}"
+        systemctl enable "$service_name" --now
         
-        if systemctl is-active --quiet "paqet-${config_name}"; then
+        if systemctl is-active --quiet "$service_name"; then
             print_success "Server started successfully"
+            
+            # Add automatic restart cronjob every 15 minutes
+            echo ""
+            echo -e "${YELLOW}Adding automatic restart cronjob every 15 minutes...${NC}"
+            add_auto_restart_cronjob "$service_name" "15min"
             
             echo ""
             echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
@@ -795,6 +956,7 @@ EOF
             echo -e "  ${YELLOW}Public IP:${NC}    ${CYAN}$public_ip${NC}"
             echo -e "  ${YELLOW}Listen Port:${NC}  ${CYAN}$port${NC}"
             echo -e "  ${YELLOW}V2Ray Ports:${NC}  ${CYAN}$inbound_ports${NC}"
+            echo -e "  ${YELLOW}Auto Restart:${NC} ${GREEN}Every 15 minutes${NC}"
             echo ""
             echo -e "${YELLOW}Secret Key (save for client):${NC}"
             echo -e "${CYAN}$secret_key${NC}"
@@ -804,7 +966,7 @@ EOF
             echo ""
         else
             print_error "Failed to start service"
-            systemctl status "paqet-${config_name}" --no-pager -l
+            systemctl status "$service_name" --no-pager -l
         fi
         
         read -p "Press Enter to continue..."
@@ -947,10 +1109,16 @@ EOF
         
         # Create and start service
         create_systemd_service "$config_name"
-        systemctl enable "paqet-${config_name}" --now
+        local service_name="paqet-${config_name}"
+        systemctl enable "$service_name" --now
         
-        if systemctl is-active --quiet "paqet-${config_name}"; then
+        if systemctl is-active --quiet "$service_name"; then
             print_success "Client started successfully"
+            
+            # Add automatic restart cronjob every 15 minutes
+            echo ""
+            echo -e "${YELLOW}Adding automatic restart cronjob every 15 minutes...${NC}"
+            add_auto_restart_cronjob "$service_name" "15min"
             
             echo ""
             echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
@@ -960,6 +1128,7 @@ EOF
             echo -e "  ${YELLOW}This Server:${NC}   ${CYAN}$public_ip${NC}"
             echo -e "  ${YELLOW}Server:${NC}        ${CYAN}$server_ip:$server_port${NC}"
             echo -e "  ${YELLOW}Forward Ports:${NC} ${CYAN}$forward_ports${NC}"
+            echo -e "  ${YELLOW}Auto Restart:${NC}  ${GREEN}Every 15 minutes${NC}"
             echo ""
             echo -e "${YELLOW}Client Connection:${NC}"
             echo -e "  Connect to: ${CYAN}$public_ip${NC}"
@@ -970,7 +1139,7 @@ EOF
             echo ""
         else
             print_error "Failed to start service"
-            systemctl status "paqet-${config_name}" --no-pager -l
+            systemctl status "$service_name" --no-pager -l
         fi
         
         read -p "Press Enter to continue..."
@@ -992,7 +1161,7 @@ list_services() {
         print_info "No Paqet services found"
     else
         echo -e "${CYAN}┌──────────────────────────────────────────────────────────────┐${NC}"
-        echo -e "${CYAN}│ Service Name          │     Status     │   Type    │${NC}"
+        echo -e "${CYAN}│ Service Name          │     Status     │   Type    │ Auto Restart │${NC}"
         echo -e "${CYAN}├──────────────────────────────────────────────────────────────┤${NC}"
         
         for service in "${services[@]}"; do
@@ -1006,6 +1175,11 @@ list_services() {
                 type=$(grep "^role:" "$config_file" 2>/dev/null | awk '{print $2}' | tr -d '"' || echo "unknown")
             fi
             
+            local cron_info="No"
+            if crontab -l 2>/dev/null | grep -q "systemctl restart $service_name"; then
+                cron_info="Yes"
+            fi
+            
             local status_text="$status"
             local status_color=""
             
@@ -1016,8 +1190,8 @@ list_services() {
                 *)        status_color="${WHITE}"; status_text="$status" ;;
             esac
 
-            printf "${CYAN}│ ${WHITE}%-21s ${CYAN}│ ${status_color}%-12s${NC} ${CYAN}│ ${WHITE}%-9s ${CYAN}│${NC}\n" \
-                   "$display_name" "$status_text" "$type"
+            printf "${CYAN}│ ${WHITE}%-21s ${CYAN}│ ${status_color}%-12s${NC} ${CYAN}│ ${WHITE}%-9s ${CYAN}│ ${WHITE}%-11s ${CYAN}│${NC}\n" \
+                   "$display_name" "$status_text" "$type" "$cron_info"
         done
         
         echo -e "${CYAN}└──────────────────────────────────────────────────────────────┘${NC}"
@@ -1116,11 +1290,12 @@ manage_service() {
             echo -e "  4. Status"
             echo -e "  5. Logs"
             echo -e "  6. View Config"
-            echo -e "  7. Delete"
-            echo -e "  8. Back"
+            echo -e "  7. Cronjob Management"
+            echo -e "  8. Delete"
+            echo -e "  9. Back"
             echo ""
             
-            read -p "Choose action [1-8]: " action
+            read -p "Choose action [1-9]: " action
             
             case "$action" in
                 1)
@@ -1158,8 +1333,14 @@ manage_service() {
                     read -p "Press Enter to continue..."
                     ;;
                 7)
+                    manage_cronjob "$service_name" "$display_name"
+                    ;;
+                8)
                     read -p "Delete this service? (y/N): " confirm
                     if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                        # Remove cronjob first
+                        remove_cronjob "$service_name"
+                        
                         systemctl stop "$selected_service" 2>/dev/null || true
                         systemctl disable "$selected_service" 2>/dev/null || true
                         rm -f "$SERVICE_DIR/$selected_service" 2>/dev/null || true
@@ -1170,7 +1351,7 @@ manage_service() {
                         return
                     fi
                     ;;
-                8)
+                9)
                     break
                     ;;
                 *)
@@ -1408,6 +1589,12 @@ uninstall_paqet() {
         systemctl stop "$service" 2>/dev/null || true
         systemctl disable "$service" 2>/dev/null || true
         rm -f "$SERVICE_DIR/$service" 2>/dev/null || true
+    done
+    
+    # Remove all cronjobs
+    for service in "${services[@]}"; do
+        local service_name="${service%.service}"
+        remove_cronjob "$service_name"
     done
     
     systemctl daemon-reload
