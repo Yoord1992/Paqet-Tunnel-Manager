@@ -2,7 +2,7 @@
 
 #=================================================
 # Paqet Tunnel Manager
-# Version: 3.7
+# Version: 3.8
 # Raw packet-level tunneling for bypassing network restrictions
 # GitHub: https://github.com/hanselime/paqet
 # Design and development by: https://github.com/behzadea12 - https://t.me/behzad_developer
@@ -19,7 +19,7 @@ WHITE='\033[1;37m'
 NC='\033[0m'
 
 # Configuration
-SCRIPT_VERSION="3.7"
+SCRIPT_VERSION="3.8"
 PAQET_VERSION="v1.0.0-alpha.12"
 CONFIG_DIR="/etc/paqet"
 SERVICE_DIR="/etc/systemd/system"
@@ -42,7 +42,7 @@ show_banner() {
     echo "║     ╚═╝     ╚═╝  ╚═╝ ╚══▀▀═╝ ╚══════╝   ╚═╝                  ║"
     echo "║                                                              ║"
     echo "║          Raw Packet Tunnel - Firewall Bypass                 ║"
-    echo "║                                 Manager v3.7                 ║"
+    echo "║                                 Manager v3.8                 ║"
     echo "║                                                              ║"
     echo "║          https://t.me/behzad_developer                       ║"
     echo "║          https://github.com/behzadea12                       ║"    
@@ -460,10 +460,27 @@ get_kcp_mode_config() {
     echo ""
     read -p "Choose [0-4] (default: 1): " mode_choice >&2
     
+    # Get conn value for all modes
+    echo ""
+    echo -e "${YELLOW}Enter conn value (1-32, default: 1):${NC}" >&2
+    read -p "conn: " conn >&2
+    conn="${conn:-1}"
+    
+    # Validate conn value
+    if ! [[ "$conn" =~ ^[0-9]+$ ]] || [ "$conn" -lt 1 ] || [ "$conn" -gt 32 ]; then
+        echo -e "${YELLOW}Invalid conn value. Using default: 1${NC}" >&2
+        conn="1"
+    fi
+    
     case $mode_choice in
         0)
             echo -e "${CYAN}Using normal mode${NC}" >&2
             echo "" >&2
+            
+            # Get MTU value
+            echo -e "${YELLOW}Enter MTU value (default: 1350):${NC}" >&2
+            read -p "mtu: " mtu >&2
+            mtu="${mtu:-1350}"
             
             # Ask for block cipher
             echo -e "${YELLOW}Select encryption block cipher:${NC}" >&2
@@ -486,11 +503,17 @@ get_kcp_mode_config() {
             esac
             
             mode_config="    mode: \"normal\"
-    block: \"$block\""
+    block: \"$block\"
+    mtu: $mtu"
             ;;
         1)
             echo -e "${CYAN}Using fast mode${NC}" >&2
             echo "" >&2
+            
+            # Get MTU value
+            echo -e "${YELLOW}Enter MTU value (default: 1350):${NC}" >&2
+            read -p "mtu: " mtu >&2
+            mtu="${mtu:-1350}"
             
             # Ask for block cipher
             echo -e "${YELLOW}Select encryption block cipher:${NC}" >&2
@@ -513,11 +536,17 @@ get_kcp_mode_config() {
             esac
             
             mode_config="    mode: \"fast\"
-    block: \"$block\""
+    block: \"$block\"
+    mtu: $mtu"
             ;;
         2)
             echo -e "${CYAN}Using fast2 mode${NC}" >&2
             echo "" >&2
+            
+            # Get MTU value
+            echo -e "${YELLOW}Enter MTU value (default: 1350):${NC}" >&2
+            read -p "mtu: " mtu >&2
+            mtu="${mtu:-1350}"
             
             # Ask for block cipher
             echo -e "${YELLOW}Select encryption block cipher:${NC}" >&2
@@ -540,11 +569,17 @@ get_kcp_mode_config() {
             esac
             
             mode_config="    mode: \"fast2\"
-    block: \"$block\""
+    block: \"$block\"
+    mtu: $mtu"
             ;;
         3)
             echo -e "${CYAN}Using fast3 mode${NC}" >&2
             echo "" >&2
+            
+            # Get MTU value
+            echo -e "${YELLOW}Enter MTU value (default: 1350):${NC}" >&2
+            read -p "mtu: " mtu >&2
+            mtu="${mtu:-1350}"
             
             # Ask for block cipher
             echo -e "${YELLOW}Select encryption block cipher:${NC}" >&2
@@ -567,7 +602,8 @@ get_kcp_mode_config() {
             esac
             
             mode_config="    mode: \"fast3\"
-    block: \"$block\""
+    block: \"$block\"
+    mtu: $mtu"
             ;;
         4)
             echo -e "${CYAN}Manual KCP configuration${NC}" >&2
@@ -646,12 +682,21 @@ get_kcp_mode_config() {
             ;;
         *)
             echo -e "${YELLOW}Using default fast mode${NC}" >&2
+            echo "" >&2
+            
+            # Get MTU value
+            echo -e "${YELLOW}Enter MTU value (default: 1350):${NC}" >&2
+            read -p "mtu: " mtu >&2
+            mtu="${mtu:-1350}"
+            
             mode_config="    mode: \"fast\"
-    block: \"aes\""
+    block: \"aes\"
+    mtu: $mtu"
             ;;
     esac
     
-    # Return the configuration (to stdout)
+    # Return both conn and mode_config (conn as first line, then mode_config)
+    echo "CONN:$conn"
     echo "$mode_config"
 }
 
@@ -886,7 +931,20 @@ configure_server() {
         
         # Get KCP configuration
         echo ""
-        kcp_config=$(get_kcp_mode_config)
+        local kcp_output
+        kcp_output=$(get_kcp_mode_config)
+        
+        # Parse conn and kcp_config from output
+        local conn="1"
+        local kcp_config=""
+        
+        while IFS= read -r line; do
+            if [[ "$line" == CONN:* ]]; then
+                conn="${line#CONN:}"
+            else
+                kcp_config+="$line"$'\n'
+            fi
+        done <<< "$kcp_output"
         
         # Get V2Ray ports
         echo ""
@@ -927,7 +985,7 @@ network:
 
 transport:
   protocol: "kcp"
-  conn: 1
+  conn: ${conn}
   kcp:
     key: "${secret_key}"
 ${kcp_config}
@@ -957,6 +1015,7 @@ EOF
             echo -e "  ${YELLOW}Listen Port:${NC}  ${CYAN}$port${NC}"
             echo -e "  ${YELLOW}V2Ray Ports:${NC}  ${CYAN}$inbound_ports${NC}"
             echo -e "  ${YELLOW}Auto Restart:${NC} ${GREEN}Every 15 minutes${NC}"
+            echo -e "  ${YELLOW}Conn:${NC}         ${CYAN}$conn${NC}"
             echo ""
             echo -e "${YELLOW}Secret Key (save for client):${NC}"
             echo -e "${CYAN}$secret_key${NC}"
@@ -1035,7 +1094,20 @@ configure_client() {
         
         # Get KCP configuration
         echo ""
-        kcp_config=$(get_kcp_mode_config)
+        local kcp_output
+        kcp_output=$(get_kcp_mode_config)
+        
+        # Parse conn and kcp_config from output
+        local conn="1"
+        local kcp_config=""
+        
+        while IFS= read -r line; do
+            if [[ "$line" == CONN:* ]]; then
+                conn="${line#CONN:}"
+            else
+                kcp_config+="$line"$'\n'
+            fi
+        done <<< "$kcp_output"
         
         # Get forwarding ports
         echo ""
@@ -1099,7 +1171,7 @@ server:
 
 transport:
   protocol: "kcp"
-  conn: 1
+  conn: ${conn}
   kcp:
     key: "${secret_key}"
 ${kcp_config}
@@ -1129,6 +1201,7 @@ EOF
             echo -e "  ${YELLOW}Server:${NC}        ${CYAN}$server_ip:$server_port${NC}"
             echo -e "  ${YELLOW}Forward Ports:${NC} ${CYAN}$forward_ports${NC}"
             echo -e "  ${YELLOW}Auto Restart:${NC}  ${GREEN}Every 15 minutes${NC}"
+            echo -e "  ${YELLOW}Conn:${NC}          ${CYAN}$conn${NC}"
             echo ""
             echo -e "${YELLOW}Client Connection:${NC}"
             echo -e "  Connect to: ${CYAN}$public_ip${NC}"
