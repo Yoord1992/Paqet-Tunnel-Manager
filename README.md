@@ -29,7 +29,7 @@ Management script for **paqet**: a raw socket, KCP-based tunnel designed for fir
 Run the script on **both servers** as **root**:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/behzadea12/Paqet-Tunnel-Manager/main/paqet-manager.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Yoord1992/Paqet-Tunnel-Manager/main/paqet-manager.sh)
 ```
 
 Select **option 0**, then **option 1** to install prerequisites.
@@ -43,7 +43,7 @@ Select **option 0**, then **option 1** to install prerequisites.
 Run the script:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/behzadea12/Paqet-Tunnel-Manager/main/paqet-manager.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Yoord1992/Paqet-Tunnel-Manager/main/paqet-manager.sh)
 ```
 
 #### Configuration Steps
@@ -109,7 +109,7 @@ In **Step 8 (Kharej server)** and **Step 9 (Iran server)**, you can choose diffe
 Run the script:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/behzadea12/Paqet-Tunnel-Manager/main/paqet-manager.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Yoord1992/Paqet-Tunnel-Manager/main/paqet-manager.sh)
 ```
 
 Select **option 7**, then choose one of the following:
