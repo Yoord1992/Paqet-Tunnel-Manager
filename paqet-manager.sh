@@ -5,7 +5,7 @@
 # Version: 3.8
 # Raw packet-level tunneling for bypassing network restrictions
 # GitHub: https://github.com/hanselime/paqet
-# Design and development by: https://github.com/behzadea12 - https://t.me/behzad_developer
+# Design and development by: https://github.com/Yoord1992 - https://t.me/Yoord
 #=================================================
 
 # Colors
@@ -44,8 +44,8 @@ show_banner() {
     echo "║          Raw Packet Tunnel - Firewall Bypass                 ║"
     echo "║                                 Manager v3.8                 ║"
     echo "║                                                              ║"
-    echo "║          https://t.me/behzad_developer                       ║"
-    echo "║          https://github.com/behzadea12                       ║"    
+    echo "║          https://t.me/Yoord                                  ║"
+    echo "║          https://github.com/Yoord1992                        ║"    
     echo "║                                                              ║"
     echo "╚══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
