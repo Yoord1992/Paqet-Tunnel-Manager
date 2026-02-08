@@ -161,7 +161,7 @@ mkdir -p /root/paqet
 The script will automatically detect the file inside `/root/paqet/`, extract it, and complete the installation:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/behzadea12/Paqet-Tunnel-Manager/main/paqet-manager.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Yoord1992/Paqet-Tunnel-Manager/main/paqet-manager.sh)
 ```
 
 ---
