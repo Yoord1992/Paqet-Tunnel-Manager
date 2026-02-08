@@ -28,7 +28,7 @@
 اسکریپت را روی **هر دو سرور** و با دسترسی **root** اجرا کنید:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/behzadea12/Paqet-Tunnel-Manager/main/paqet-manager.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Yoord1992/Paqet-Tunnel-Manager/main/paqet-manager.sh)
 ```
 
 سپس **گزینه 0** و بعد **گزینه 1** را برای نصب پیش‌نیازها انتخاب کنید.
@@ -42,7 +42,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/behzadea12/Paqet-Tunnel-Mana
 اسکریپت را اجرا کنید:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/behzadea12/Paqet-Tunnel-Manager/main/paqet-manager.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Yoord1992/Paqet-Tunnel-Manager/main/paqet-manager.sh)
 ```
 
 #### مراحل پیکربندی
@@ -108,7 +108,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/behzadea12/Paqet-Tunnel-Mana
 اسکریپت را اجرا کنید:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/behzadea12/Paqet-Tunnel-Manager/main/paqet-manager.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Yoord1992/Paqet-Tunnel-Manager/main/paqet-manager.sh)
 ```
 
 سپس **گزینه 7** را انتخاب کرده و یکی از موارد زیر را انتخاب کنید:
@@ -167,7 +167,7 @@ mkdir -p /root/paqet
 اسکریپت به‌صورت خودکار فایل موجود در `/root/paqet/` را شناسایی کرده، استخراج می‌کند و نصب را کامل می‌کند:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/behzadea12/Paqet-Tunnel-Manager/main/paqet-manager.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Yoord1992/Paqet-Tunnel-Manager/main/paqet-manager.sh)
 ```
 
 ---
